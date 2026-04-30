@@ -1,0 +1,32 @@
+name: Notify New Releases
+
+on:
+  schedule:
+    # Runs at 05:00 UTC = 10:00 AM PKT every day
+    - cron: '0 5 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: scripts
+
+      - name: Run notification script
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: node notify.js
+        working-directory: scripts
