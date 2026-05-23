@@ -158,37 +158,50 @@ void _handleNotificationNavigation(Map<String, dynamic> data) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase initialization failed - log error but continue
+    debugPrint('Firebase initialization error: $e');
+  }
 
   // ── Local Notifications setup ──────────────────────────────────────────────
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(_channel);
+  try {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
 
-  await flutterLocalNotificationsPlugin.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    ),
-    // Foreground notification tap handler
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      final payload = response.payload;
-      if (payload != null && payload.isNotEmpty) {
-        _handleNotificationNavigation({'screen': payload});
-      }
-    },
-  );
+    await flutterLocalNotificationsPlugin.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+      // Foreground notification tap handler
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          _handleNotificationNavigation({'screen': payload});
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('Notification setup error: $e');
+  }
 
   // ── FCM setup ──────────────────────────────────────────────────────────────
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  try {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  } catch (e) {
+    debugPrint('FCM setup error: $e');
+  }
 
   // Foreground: show banner + store payload for tap navigation
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -231,11 +244,11 @@ void main() async {
   }
 
   // ── Settings sync ──────────────────────────────────────────────────────────
-  await AppSettings.syncFromFirestore();
-
-  // Print FCM token for testing (remove before production)
-  final fcmToken = await FirebaseMessaging.instance.getToken();
-  debugPrint('🔔 FCM Token: $fcmToken');
+  try {
+    await AppSettings.syncFromFirestore();
+  } catch (e) {
+    debugPrint('Settings sync error: $e');
+  }
 
   // ── UI setup ───────────────────────────────────────────────────────────────
   SystemChrome.setPreferredOrientations([
